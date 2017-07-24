@@ -1,0 +1,14 @@
+<RCC>
+    <qresource prefix="/">
+        <file>down.png</file>
+        <file>up.png</file>
+        <file>close.png</file>
+        <file>min.png</file>
+        <file>menu.png</file>
+        <file>upOrDown.png</file>
+        <file>left.png</file>
+        <file>right.png</file>
+        <file>check.png</file>
+        <file>app.ico</file>
+    </qresource>
+</RCC>
