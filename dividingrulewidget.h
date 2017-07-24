@@ -16,6 +16,9 @@
 #include <QColorDialog>
 #include <QSettings>
 #include <QList>
+#include <QScreen>
+#include <QPaintDevice>
+#include <QInputDialog>
 #include "scalepreview.h"
 namespace Ui {
 class DividingRuleWidget;
@@ -49,6 +52,12 @@ private slots:
     void on_menuButton_clicked();
 
     void resetSlot();//重置刻度尺
+
+    void pxSlot();//像素
+    void cmSlot();//cm
+    void inSlot();//英寸
+    void adjustSlot();//校准
+
     void topSlot();//置顶
     void colorSlot();//颜色
     void showScaleSlot();//显示缩放窗口
@@ -74,7 +83,9 @@ private:
     int windowX,windowY,windowW,windowH;//默认位置
     int red,green,blue;
     float alpha;
+    double tempValue;
     bool isPressed,isShowScale,isTop;//显示缩放窗口
+    QString unit;
     QSettings *setting;
     QCursor downCursor ;//下光标
     QCursor upCursor ;//上光标
@@ -86,6 +97,12 @@ private:
     QAction *horizontal;//水平
     QAction *vertical;//垂直
     QAction *reset;//重置
+
+    QAction *pxAction;//像素
+    QAction *cmAction;//cm
+    QAction *inAction;//英寸
+    QAction *adjustAction;//校准
+
     QAction *color;//颜色
     QAction *minAction;//最小化
     QAction *topAction;//窗口置顶
@@ -106,7 +123,8 @@ private:
     QAction *alpha45;//透明度
     QAction *alpha40;//透明度
 
-
+    int logicalDpi;//获取dpi
+    QString value;//英寸临时值
 
     bool isHorizontal;//是否水平
     void initMenu();//初始化菜单

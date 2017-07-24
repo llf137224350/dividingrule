@@ -19,6 +19,7 @@ DividingRuleWidget::DividingRuleWidget(QWidget *parent) :
     alpha = setting->value("alpha").toFloat();
     isShowScale = setting->value("isShowScale").toBool();
     isTop = setting->value("isTop").toBool();
+    unit = setting->value("unit").toString();
     setting->endGroup();
     //是否置顶
     if(isTop){
@@ -65,12 +66,15 @@ DividingRuleWidget::DividingRuleWidget(QWidget *parent) :
     //初始化菜单
     this->initMenu();
 
-     this->conn();
+    this->conn();
     //设置背景色
     this->setStyleSheet(QString("background-color:rgb("+QString::number(red)+","+QString::number(green)+","+QString::number(blue)+")"));
 
     //设置透明度
-   this->initAlpha();
+    this->initAlpha();
+
+    logicalDpi = QPaintDevice::logicalDpiX();
+
 }
 
 DividingRuleWidget::~DividingRuleWidget()
@@ -88,6 +92,21 @@ void DividingRuleWidget::initMenu(){
 
     this->vertical->setIconVisibleInMenu(false);
     this->reset = new QAction("重置位置",this);
+
+    this->pxAction = new QAction("像素",this);
+    this->pxAction->setIcon(QIcon(":check"));
+    this->pxAction->setIconVisibleInMenu(unit=="px"?true:false);
+
+    this->cmAction = new QAction("厘米",this);
+    this->cmAction->setIcon(QIcon(":check"));
+    this->cmAction->setIconVisibleInMenu(unit=="cm"?true:false);
+
+    this->inAction = new QAction("英寸",this);
+    this->inAction->setIcon(QIcon(":check"));
+    this->inAction->setIconVisibleInMenu(unit=="in"?true:false);
+
+    this->adjustAction = new QAction("校准标尺(像素/英寸)",this);
+
 
     this->topAction = new QAction("窗口置顶",this);
     this->topAction->setIcon(QIcon(":check"));
@@ -160,7 +179,14 @@ void DividingRuleWidget::initMenu(){
     menu->addAction(this->vertical);
     menu->addAction(this->reset);
     menu->addSeparator();
+    menu->addAction(this->pxAction);
+    menu->addAction(this->cmAction);
+    menu->addAction(this->inAction);
+    menu->addAction(this->adjustAction);
+
+    menu->addSeparator();
     menu->addAction(this->topAction);
+
     menu->addAction(this->color);
     subMenu->addAction(this->alpha100);
     subMenu->addAction(this->alpha95);
@@ -186,6 +212,12 @@ void DividingRuleWidget::conn(){
     connect(this->vertical,SIGNAL(triggered(bool)),this,SLOT(on_directionButton_clicked()));
     connect(this->reset,SIGNAL(triggered(bool)),this,SLOT(resetSlot()));
     connect(this->topAction,SIGNAL(triggered(bool)),this,SLOT(topSlot()));
+
+    connect(this->pxAction,SIGNAL(triggered(bool)),this,SLOT(pxSlot()));
+    connect(this->cmAction,SIGNAL(triggered(bool)),this,SLOT(cmSlot()));
+    connect(this->inAction,SIGNAL(triggered(bool)),this,SLOT(inSlot()));
+    connect(this->adjustAction,SIGNAL(triggered(bool)),this,SLOT(adjustSlot()));
+
     connect(this->color,SIGNAL(triggered(bool)),this,SLOT(colorSlot()));
     connect(this->minAction,SIGNAL(triggered(bool)),this,SLOT(on_minButton_clicked()));
     connect(this->closeAction,SIGNAL(triggered(bool)),this,SLOT(on_closeButton_clicked()));
@@ -267,27 +299,66 @@ void DividingRuleWidget::mouseMoveEvent(QMouseEvent *event){
             setCursor(upCursor);
         else
             setCursor(downCursor);
-
-        ui->label->setText("W = "+QString::number(event->x() > 0 ? event->x() : -event->x())+" px");
-        if(isShowScale){
-            this->preview.setPx("W = "+QString::number(event->x() > 0 ? event->x() : -event->x())+" px");
-            this->preview.show();
+        if(this->unit =="px"){
+            ui->label->setText("W = "+QString::number(event->x() > 0 ? event->x() : -event->x())+" px");
+            if(isShowScale){
+                this->preview.setPx("W = "+QString::number(event->x() > 0 ? event->x() : -event->x())+" px");
+                this->preview.show();
+            }
+        }else if(this->unit =="cm"){
+            tempValue = event->x() > 0 ? event->x() : -event->x();
+            ui->label->setText("W = "+ QString::number(tempValue / 96 * 2.54,'f',1)+" cm");
+            if(isShowScale){
+                this->preview.setPx("W = "+QString::number(tempValue / 96 * 2.54,'f',1)+" cm");
+                this->preview.show();
+            }
+        }else{
+            tempValue = event->x() > 0 ? event->x() : -event->x();
+            tempValue +=1;
+            tempValue = tempValue * 1.0 / this->logicalDpi;
+            ui->label->setText("W = "+QString::number(tempValue, 'f', 2)+" in");
+            if(isShowScale){
+                this->preview.setPx("W = "+QString::number(tempValue, 'f', 2)+" in");
+                this->preview.show();
+            }
         }
+
     }else if((event->x() < 15 || event->x() > this->width() - 15)&&!isPressed && !isHorizontal){
         //竖直方向
         if(event->x() < 15)
             setCursor(leftCursor);
         else
             setCursor(rightCursor);
-
-        ui->label->setText(QString::number(event->y() > 0 ? event->y() : -event->y())+" px");
-        if(isShowScale){
-            this->preview.setPx("H = "+QString::number(event->y() > 0 ? event->y() : -event->y())+" px");
-            this->preview.show();
+        if(this->unit =="px"){
+            ui->label->setText(QString::number(event->y() > 0 ? event->y() : -event->y())+" px");
+            if(isShowScale){
+                this->preview.setPx("H = "+QString::number(event->y() > 0 ? event->y() : -event->y())+" px");
+                this->preview.show();
+            }
+        }else if(this->unit =="cm"){
+            tempValue = event->y() > 0 ? event->y() : -event->y();
+            ui->label->setText(QString::number(tempValue / 96 * 2.54,'f',1)+" cm");
+            if(isShowScale){
+                this->preview.setPx(QString::number(tempValue / 96 * 2.54,'f',1)+" cm");
+                this->preview.show();
+            }
+        }else{
+            tempValue = event->y() > 0 ? event->y() : -event->y();
+            tempValue +=1;
+            tempValue = tempValue * 1.0 / this->logicalDpi;
+            ui->label->setText(QString::number(tempValue, 'f', 2)+" in");
+            if(isShowScale){
+                this->preview.setPx(QString::number(tempValue, 'f', 2)+" in");
+                this->preview.show();
+            }
         }
+
     }else{
-        setCursor(Qt::ClosedHandCursor);
-        if(isPressed){
+        setCursor(Qt::ClosedHandCursor);//设置光标为手型
+        if(isShowScale){//如果显示放大镜 则关闭
+            this->preview.hide();
+        }
+        if(isPressed){//按住移动窗口
             this->move(this->x()+moveX,this->y()+moveY);
         }
     }
@@ -313,30 +384,102 @@ void DividingRuleWidget::paintEvent(QPaintEvent *event){
     painter.setFont(font);
     painter.drawRect(QRect(0,0,this->width()-1,this->height()-1));
     if(isHorizontal){//水平
-        //绘制小刻度
-        for(int i = 0;i < this->width() / 2 ;i++){
-            if(i < this->width() / 50){   //绘制中刻度
-                big = i * 50;
-                painter.drawLine(big,0,big,12);
-                painter.drawLine(big,this->height() - 12,big,this->height());
+        if(this->unit =="px"){
+            //绘制小刻度
+            for(int i = 0;i < this->width() / 2 ;i++){
+                if(i < this->width() / 50){   //绘制中刻度
+                    big = i * 50;
+                    painter.drawLine(big,0,big,12);
+                    painter.drawLine(big,this->height() - 12,big,this->height());
 
-                QFontMetrics fm = painter.fontMetrics();
+                    QFontMetrics fm = painter.fontMetrics();
 
-                bigMore = (i+1)*50;
-                painter.drawText(QRectF(bigMore -  fm.width(QString::number(big)) / 2,15,
-                                        fm.width(QString::number(bigMore)),12),QString::number(bigMore));
+                    bigMore = (i+1)*50;
+                    painter.drawText(QRectF(bigMore -  fm.width(QString::number(big)) / 2,15,
+                                            fm.width(QString::number(bigMore)),12),QString::number(bigMore));
 
-                painter.drawText(QRectF(bigMore-  fm.width(QString::number(big)) / 2,this->height() - 15 -fm.height() ,
-                                        fm.width(QString::number(bigMore)),12),QString::number(bigMore));
+                    painter.drawText(QRectF(bigMore-  fm.width(QString::number(big)) / 2,this->height() - 15 -fm.height() ,
+                                            fm.width(QString::number(bigMore)),12),QString::number(bigMore));
+                }
+                if(i < this->width()<10){  //绘制中刻度
+                    middle = i*10;
+                    painter.drawLine(middle,0,middle,8);
+                    painter.drawLine(middle,this->height() - 8,middle,this->height());
+                }
+                min = i*2;
+                painter.drawLine(min,0,min,5);//绘制小刻度
+                painter.drawLine(min,this->height() - 5,min,this->height());
             }
-            if(i < this->width()<10){  //绘制中刻度
-                middle = i*10;
-                painter.drawLine(middle,0,middle,8);
-                painter.drawLine(middle,this->height() - 8,middle,this->height());
+        }else if(this->unit == "cm"){
+            //将宽度换算为cm
+            float cm = QString::number(this->width()*1.0 / 96 * 2.54,'f',1).toFloat();
+            float px = 0.1  / 2.54 * this->logicalDpi;
+            float temp = 0.1;
+            QFontMetrics fm = painter.fontMetrics();
+            while(temp <= cm){
+                temp =   QString::number(temp,'f',1).toFloat();
+                if((int)temp == temp){
+
+                    painter.drawLine(temp*10 *px,0,temp*10 * px,15);//绘制大刻度
+                    painter.drawLine(temp*10 *px,this->height(),temp*10 * px,this->height() - 15);//绘制大刻度
+
+                    painter.drawText(QRectF(temp*10 *px -  fm.width(QString::number(temp)) / 2,16,
+                                            fm.width(QString::number(temp)),12), QString::number(temp));
+                    painter.drawText(QRectF(temp*10 *px -  fm.width(QString::number(temp)) / 2,this->height() - 16-fm.height(),
+                                            fm.width(QString::number(temp)),12), QString::number(temp));
+                }else{
+                    painter.drawLine(temp*10 *px,0,temp*10 * px,5);//绘制小刻度
+                    painter.drawLine(temp*10 *px,this->height(),temp*10 * px,this->height() - 5);//绘制小刻度
+                }
+
+                temp += 0.1;
             }
-            min = i*2;
-            painter.drawLine(min,0,min,5);//绘制小刻度
-            painter.drawLine(min,this->height() - 5,min,this->height());
+
+        }else{
+            //将宽度换算为英寸
+            float in = this->width()*1.0 / 96;
+            float temp = 0.12;
+            bool odd = true;
+
+            //最想刻度偶数 0.12 奇数 0.13
+            QFontMetrics fm = painter.fontMetrics();
+            while(temp <= in){
+
+                //绘线
+                if(QString::number(temp).indexOf("99") != -1){
+                    painter.drawLine(temp * this->logicalDpi,0,temp * this->logicalDpi,16);
+                    painter.drawLine(temp * this->logicalDpi,this->height(),temp * this->logicalDpi,this->height() - 16);
+                    //绘制文本
+                    value = QString::number(temp, 'f', 1);
+                    painter.drawText(QRectF(temp * this->logicalDpi -  fm.width(value) / 2,16,
+                                            fm.width(value),12), value);
+
+                    painter.drawText(QRectF(temp * this->logicalDpi -  fm.width(value) / 2,this->height() - 16-fm.height(),
+                                            fm.width(value),12), value);
+                }else if(QString::number(temp).indexOf("49") != -1){
+                    painter.drawLine(temp * this->logicalDpi,0  ,temp * this->logicalDpi, 9);
+                    painter.drawLine(temp * this->logicalDpi,this->height()  ,temp * this->logicalDpi,this->height() - 9);
+                    //绘制文本
+                    value = QString::number(temp, 'f', 1);
+                    painter.drawText(QRectF(temp * this->logicalDpi -  fm.width(value) / 2,16,
+                                            fm.width(value),12), value);
+                    painter.drawText(QRectF(temp * this->logicalDpi -  fm.width(value) / 2,this->height() - 16-fm.height(),
+                                            fm.width(value),12), value);
+                }else{
+                    painter.drawLine(temp * this->logicalDpi,0  ,temp * this->logicalDpi,5);
+                    painter.drawLine(temp * this->logicalDpi,this->height()  ,temp * this->logicalDpi,this->height() - 5);
+
+                }
+
+                if(odd){
+
+                    temp += 0.12;
+                }else{
+
+                    temp += 0.13;
+                }
+                odd = !odd;
+            }
         }
 
         //绘制三竖
@@ -348,29 +491,102 @@ void DividingRuleWidget::paintEvent(QPaintEvent *event){
         painter.drawLine(this->width() -8,this->height() / 2 - 5,this->width() -8,this->height() / 2 + 5);
         painter.drawLine(this->width() -11,this->height() / 2 - 6,this->width() -11,this->height() / 2 + 6);
     }else{//竖直
-        //绘制小刻度
-        for(int i = 0;i < this->height() / 2 ;i++){
-            if(i < this->height() / 50){   //绘制中刻度
-                big = i * 50;
-                painter.drawLine(0,big,12,big);
-                painter.drawLine(this->width() - 12,big,this->width(),big);
+        if(this->unit=="px"){
+            //绘制小刻度
+            for(int i = 0;i < this->height() / 2 ;i++){
+                if(i < this->height() / 50){   //绘制中刻度
+                    big = i * 50;
+                    painter.drawLine(0,big,12,big);
+                    painter.drawLine(this->width() - 12,big,this->width(),big);
 
-                QFontMetrics fm = painter.fontMetrics();
+                    QFontMetrics fm = painter.fontMetrics();
 
-                bigMore = (i+1)*50;
-                painter.drawText(QRectF(15,bigMore -  fm.height() / 2,fm.width(QString::number(bigMore)),12),QString::number(bigMore));
+                    bigMore = (i+1)*50;
+                    painter.drawText(QRectF(15,bigMore -  fm.height() / 2,fm.width(QString::number(bigMore)),12),QString::number(bigMore));
 
-                painter.drawText(QRectF(this->width() - 15 -fm.width(QString::number(bigMore)) ,bigMore -  fm.height() / 2,fm.width(QString::number(bigMore)),12),QString::number(bigMore));
+                    painter.drawText(QRectF(this->width() - 15 -fm.width(QString::number(bigMore)) ,bigMore -  fm.height() / 2,fm.width(QString::number(bigMore)),12),QString::number(bigMore));
 
+                }
+                if(i < this->height()<10){  //绘制中刻度
+                    middle = i*10;
+                    painter.drawLine(0,middle,8,middle);
+                    painter.drawLine(this->width() - 8,middle,this->width(),middle);
+                }
+                min = i*2;
+                painter.drawLine(0,min,5,min);//绘制小刻度
+                painter.drawLine(this->width() - 5,min,this->width(),min);
             }
-            if(i < this->height()<10){  //绘制中刻度
-                middle = i*10;
-                painter.drawLine(0,middle,8,middle);
-                painter.drawLine(this->width() - 8,middle,this->width(),middle);
+        }else if(this->unit == "cm"){
+            //将宽度换算为cm
+            float cm = QString::number(this->height()*1.0 / 96 * 2.54,'f',1).toFloat();
+            float px = 0.1  / 2.54 * this->logicalDpi;
+            float temp = 0.1;
+            QFontMetrics fm = painter.fontMetrics();
+            while(temp <= cm){
+                temp =   QString::number(temp,'f',1).toFloat();
+                if((int)temp == temp){
+
+                    painter.drawLine(0,temp*10 *px,15,temp*10 * px);//绘制大刻度
+                    painter.drawLine(this->width(),temp*10 *px,this->width() - 15,temp*10 * px);//绘制大刻度
+
+                    painter.drawText(QRectF(16,temp*10 *px -  fm.height() / 2,
+                                            fm.width(QString::number(temp)),12), QString::number(temp));
+                    painter.drawText(QRectF(this->width() - fm.width(QString::number(temp))-16,temp*10 *px -  fm.height() / 2,
+                                            fm.width(QString::number(temp)),12), QString::number(temp));
+                }else{
+                    painter.drawLine(0,temp*10 *px,5,temp*10 * px);//绘制小刻度
+                    painter.drawLine(this->width(),temp*10 *px,this->width() - 5,temp*10 * px);//绘制小刻度
+                }
+
+                temp += 0.1;
             }
-            min = i*2;
-            painter.drawLine(0,min,5,min);//绘制小刻度
-            painter.drawLine(this->width() - 5,min,this->width(),min);
+        }else{
+            //将宽度换算为英寸
+            float in = this->height()*1.0 / 96;
+            float temp = 0.12;
+            bool odd = true;
+
+            //最想刻度偶数 0.12 奇数 0.13
+            QFontMetrics fm = painter.fontMetrics();
+            while(temp <= in){
+
+                //绘线
+                if(QString::number(temp).indexOf("99") != -1){
+                    painter.drawLine(0,temp * this->logicalDpi,16,temp * this->logicalDpi);
+                    painter.drawLine(this->height(),temp * this->logicalDpi,this->width() - 16,temp * this->logicalDpi);
+                    //绘制文本
+                    value = QString::number(temp, 'f', 1);
+                    painter.drawText(QRectF(18,temp * this->logicalDpi -  fm.height() / 2,
+                                            fm.width(value),12), value);
+
+                    painter.drawText(QRectF(this->width() - 18 - fm.width(value),temp * this->logicalDpi -  fm.height() / 2,
+                                            fm.width(value),12), value);
+                }else if(QString::number(temp).indexOf("49") != -1){
+                    painter.drawLine(0  ,temp * this->logicalDpi, 8,temp * this->logicalDpi);
+                    painter.drawLine(this->width()  ,temp * this->logicalDpi,this->width() - 8,temp * this->logicalDpi);
+                    //绘制文本
+                    value = QString::number(temp, 'f', 1);
+
+                    painter.drawText(QRectF(18,temp * this->logicalDpi -  fm.height() / 2,
+                                            fm.width(value),12), value);
+
+                    painter.drawText(QRectF(this->width() - 18 - fm.width(value),temp * this->logicalDpi -  fm.height() / 2,
+                                            fm.width(value),12), value);
+                }else{
+                    painter.drawLine(0  ,temp * this->logicalDpi,5,temp * this->logicalDpi);
+                    painter.drawLine(this->width()  ,temp * this->logicalDpi,this->width() - 5,temp * this->logicalDpi);
+
+                }
+
+                if(odd){
+
+                    temp += 0.12;
+                }else{
+
+                    temp += 0.13;
+                }
+                odd = !odd;
+            }
         }
         //绘制三竖
         painter.drawLine(this->width() / 2 - 4,5,this->width() / 2 + 4,5);
@@ -425,6 +641,7 @@ void DividingRuleWidget::on_directionButton_clicked()
         ui->menuButton->setGeometry(60,37,26,26);
         ui->minButton->setGeometry(90,37,26,26);
         ui->closeButton->setGeometry(120,37,26,26);
+
         ui->label->setGeometry(170,37,100,20);
     }else{
         this->setGeometry(this->x(),this->y(),this->height(),this->width());
@@ -432,7 +649,12 @@ void DividingRuleWidget::on_directionButton_clicked()
         ui->menuButton->setGeometry(37,60,26,26);
         ui->minButton->setGeometry(37,90,26,26);
         ui->closeButton->setGeometry(37,120,26,26);
-        ui->label->setGeometry(25,166,51,20);
+        if(this->unit =="px")
+            ui->label->setGeometry(20,166,60,20);
+        else if(this->unit =="cm")
+            ui->label->setGeometry(20,166,60,20);
+        else
+            ui->label->setGeometry(20,156,60,20);
     }
     this->horizontal->setIconVisibleInMenu(this->isHorizontal);
     this->vertical->setIconVisibleInMenu(!this->isHorizontal);
@@ -514,6 +736,60 @@ void DividingRuleWidget::on_menuButton_clicked()
 void DividingRuleWidget::resetSlot()
 {
     this->setGeometry(this->windowX,this->windowY,this->windowW,this->windowH);
+}
+//像素
+void DividingRuleWidget::pxSlot()
+{
+    this->unit = "px";
+    setting->beginGroup("config");//beginGroup与下面endGroup 相对应，“config”是标记
+    setting->setValue("unit","px");
+    setting->endGroup();
+    this->pxAction->setIconVisibleInMenu(true);
+    this->cmAction->setIconVisibleInMenu(false);
+    this->inAction->setIconVisibleInMenu(false);
+    ui->label->setText("");
+    this->update();
+}
+//cm
+void DividingRuleWidget::cmSlot()
+{
+    this->unit = "cm";
+    setting->beginGroup("config");//beginGroup与下面endGroup 相对应，“config”是标记
+    setting->setValue("unit","cm");
+    setting->endGroup();
+    this->pxAction->setIconVisibleInMenu(false);
+    this->cmAction->setIconVisibleInMenu(true);
+    this->inAction->setIconVisibleInMenu(false);
+    ui->label->setText("");
+    this->update();
+}
+//英寸
+void DividingRuleWidget::inSlot()
+{
+    this->unit = "in";
+    setting->beginGroup("config");//beginGroup与下面endGroup 相对应，“config”是标记
+    setting->setValue("unit","in");
+    setting->endGroup();
+    this->pxAction->setIconVisibleInMenu(false);
+    this->cmAction->setIconVisibleInMenu(false);
+    this->inAction->setIconVisibleInMenu(true);
+    ui->label->setText("");
+    this->update();
+}
+//校准
+void DividingRuleWidget::adjustSlot()
+{
+
+    bool ok;
+    double d = QInputDialog::getDouble(this, tr("校准标尺"),
+                                       tr("屏幕每英寸像素值(默认值："), this->logicalDpi, 0, 10000, 1, &ok);
+    if (ok)
+    {
+        if(this->logicalDpi != (float)d){
+            this->logicalDpi = (float)d;
+            this->update();
+        }
+    }
 }
 //置顶
 void DividingRuleWidget::topSlot()

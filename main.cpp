@@ -24,6 +24,8 @@ int main(int argc, char *argv[])
         setting.setValue("isShowScale",QVariant("1"));
     if(setting.value("isTop").isNull())
         setting.setValue("isTop",QVariant("1"));
+    if(setting.value("unit").isNull())
+        setting.setValue("unit",QVariant("px"));
     setting.endGroup();
     DividingRuleWidget w;
     w.show();
